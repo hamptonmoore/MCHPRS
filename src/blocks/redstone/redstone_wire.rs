@@ -224,11 +224,10 @@ impl RedstoneWire {
 }
 
 enum UpdateNodeType {
-    Unknown, Redstone, Other
+    Unknown, Redstone(RedstoneWire), Other
 }
 
 struct UpdateNode {
-    current_state: u32,
     neighbor_nodes: Vec<UpdateNode>,
     self_pos: BlockPos,
     parent_pos: BlockPos,
@@ -237,15 +236,12 @@ struct UpdateNode {
     visited: bool,
     xbias: u32,
     ybias: u32,
-
 }
 
 pub struct RedstoneWireTurbo {
     wire: RedstoneWire,
     node_cache: HashMap<BlockPos, UpdateNode>,
-    update_queue_0: Vec<UpdateNode>,
-    update_queue_1: Vec<UpdateNode>,
-    update_queue_2: Vec<UpdateNode>,
+    update_queue: [Vec<UpdateNode>; 3],
 }
 
 impl RedstoneWireTurbo {
@@ -368,13 +364,12 @@ impl RedstoneWireTurbo {
     /// This allows the avoce remapping tables to be looked up by cardial direction index
     const REORDERING: [[u32; 24]; 4] = [ Self::FORWARD_IS_NORTH, Self::FORWARD_IS_EAST, Self::FORWARD_IS_SOUTH, Self::FORWARD_IS_WEST ];
 
+    /// For a newly created UpdateNode object, determine what type of block it is.
     fn identify_node(plot: &Plot, upd1: &mut UpdateNode) {
         let pos = upd1.self_pos;
-        let old_state = plot.get_block_raw(pos);
-        upd1.current_state = old_state;
-        let block = Block::from_block_state(old_state);
-        if let Block::RedstoneWire(_) = block {
-            upd1.node_type = UpdateNodeType::Redstone;
+        let block = plot.get_block(pos);
+        if let Block::RedstoneWire(wire) = block {
+            upd1.node_type = UpdateNodeType::Redstone(wire);
         } else {
             upd1.node_type = UpdateNodeType::Other;
         }
@@ -420,27 +415,40 @@ impl RedstoneWireTurbo {
         }
     }
 
+    /// Process a node whose neighboring redstone wire has experienced value changes.
     fn update_node(&self, plot: &Plot, upd1: &mut UpdateNode, layer: u32) {
         upd1.visited = true;
-        let old_state = upd1.current_state;
-        let new_state = self.calculate_current_changes(plot, upd1);
-        if new_state != old_state {
-            upd1.current_state = new_state;
-            self.propagate_changes(plot, upd1, layer);
+        if let UpdateNodeType::Redstone(wire) = &mut upd1.node_type {
+            let new_state = self.calculate_current_changes(plot, upd1);
+            if *wire != new_state {
+                *wire = new_state;
+                self.propagate_changes(plot, upd1, layer);
+            }
         }
     }
 
+    /// This identifies the neighboring positions of a new UpdateNode object,
+    /// determines their types, and links those to into the graph.  Then based on
+    /// what nodes in the redstone wire graph have been visited, the neighbors
+    /// are reordered left-to-right relative to the direction of information flow.
     fn find_neighbors(&self, plot: &Plot, upd1: &mut UpdateNode) {
         let pos = upd1.self_pos;
         let neighbors = self.compute_all_neighbors(pos);
         upd1.neighbor_nodes();
     }
 
+    /// Optimized function to compute a redstone wire's power level based on cached
+    /// state.
     fn get_max_current_strength(upd: &UpdateNode, strength: u8) -> u8 {
-        if upd.node_type != UpdateNodeType::Redstone {
-            return strength;
+        if let UpdateNodeType::Redstone(wire) = upd.node_type {
+            if wire.power > strength {
+                wire.power
+            } else {
+                strength
+            }
+        } else {
+            strength
         }
-        let i = Block::from_block_state(upd.current_state)
     }
 
 }
