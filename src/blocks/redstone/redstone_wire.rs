@@ -252,6 +252,9 @@ struct UpdateNode {
 pub struct RedstoneWireTurbo {
     wire: RedstoneWire,
     node_cache: HashMap<BlockPos, UpdateNode>,
+    update_queue_0: Vec<UpdateNode>,
+    update_queue_1: Vec<UpdateNode>,
+    update_queue_2: Vec<UpdateNode>,
 }
 
 impl RedstoneWireTurbo {
@@ -321,7 +324,7 @@ impl RedstoneWireTurbo {
     const NORTH: u32 = 0;
     const EAST: u32 = 1;
     const SOUTH: u32 = 2;
-    const West: u32 = 3;
+    const WEST: u32 = 3;
 
     const FORWARD_IS_NORTH: [u32; 24] = [2, 3, 16, 19, 0, 4, 1, 5, 7, 8, 17, 20, 12, 13, 18, 21, 6, 9, 22, 14, 11, 10, 23, 15];
     const FORWARD_IS_EAST: [u32; 24] = [2, 3, 16, 19, 4, 1, 5, 0, 17, 20, 12, 13, 18, 21, 7, 8, 22, 14, 11, 15, 23, 9, 6, 10];
@@ -384,6 +387,69 @@ impl RedstoneWireTurbo {
         } else {
             upd1.node_type = UpdateNodeType::Other;
         }
+    }
+
+    fn compute_heading(rx: u32, rz: u32) -> u32 {
+        // rx and rz can only take on values -1, 0, and 1, so we can
+        // compute a code number that allows us to use a single switch
+        // to determine the heading.
+        let code = (rx + 1) + 3*(rz + 1);
+        
+        match code {
+            // Both rx and rz are -1 (northwest)
+            // Randomly choose one to be forward.
+            0 => Self::WEST,
+            // rx=0, rz=-1
+            // Definitively North
+            1 => Self::NORTH,
+            // rx=1, rz=-1 (northeast)
+            // Choose randomly between north and east
+            2 => Self::EAST,
+            // rx=-1, rz=0
+                // Definitively West
+                3 => Self::WEST,
+            // rx=0, rz=0
+                // Heading is completely ambiguous.  Choose
+                // randomly among the four cardinal directions.
+            4 => Self::NORTH,
+            // rx=1, rz=0
+                // Definitively East
+            5 => Self::EAST,
+            // rx=-1, rz=1 (southwest)
+                // Choose randomly between south and west
+            6 => Self::SOUTH,
+            // rx=0, rz=1
+                // Definitively South
+            7 => Self::SOUTH,
+            // rx=1, rz=1 (southeast)
+                // Choose randomly between south and east
+            8 => Self::EAST,
+            // How did we get here?
+            _ => Self::WEST
+        }
+    }
+
+    fn update_node(&self, plot: &Plot, upd1: &mut UpdateNode, layer: u32) {
+        upd1.visited = true;
+        let old_state = upd1.current_state;
+        let new_state = self.calculate_current_changes(plot, upd1);
+        if new_state != old_state {
+            upd1.current_state = new_state;
+            self.propagate_changes(plot, upd1, layer);
+        }
+    }
+
+    fn find_neighbors(&self, plot: &Plot, upd1: &mut UpdateNode) {
+        let pos = upd1.self_pos;
+        let neighbors = self.compute_all_neighbors(pos);
+        upd1.neighbor_nodes();
+    }
+
+    fn get_max_current_strength(upd: &UpdateNode, strength: u8) -> u8 {
+        if upd.node_type != UpdateNodeType::Redstone {
+            return strength;
+        }
+        let i = Block::from_block_state(upd.current_state)
     }
 
 }
