@@ -2,7 +2,6 @@ pub mod commands;
 pub mod database;
 mod packets;
 mod storage;
-pub mod worldedit;
 
 use crate::blocks::{Block, BlockEntity, BlockPos};
 use crate::network::packets::clientbound::*;

@@ -2,7 +2,6 @@ use crate::blocks::{BlockDirection, BlockPos};
 use crate::items::{Item, ItemStack};
 use crate::network::packets::clientbound::*;
 use crate::network::NetworkClient;
-use crate::plot::worldedit::WorldEditClipboard;
 use crate::plot::Plot;
 use byteorder::{BigEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
@@ -71,10 +70,6 @@ pub struct Player {
     pub client: NetworkClient,
     pub last_keep_alive_received: Instant,
     last_keep_alive_sent: Instant,
-    // Worldedit
-    pub first_position: Option<BlockPos>,
-    pub second_position: Option<BlockPos>,
-    pub worldedit_clipboard: Option<WorldEditClipboard>,
 }
 
 impl fmt::Debug for Player {
@@ -146,9 +141,6 @@ impl Player {
                 fly_speed: player_data.fly_speed,
                 last_keep_alive_received: Instant::now(),
                 last_keep_alive_sent: Instant::now(),
-                first_position: None,
-                second_position: None,
-                worldedit_clipboard: None,
             }
         } else {
             Player::create_player(uuid, username, client)
@@ -181,9 +173,6 @@ impl Player {
             on_ground: true,
             last_keep_alive_received: Instant::now(),
             last_keep_alive_sent: Instant::now(),
-            first_position: None,
-            second_position: None,
-            worldedit_clipboard: None,
         }
     }
 
@@ -321,26 +310,6 @@ impl Player {
             })
             .to_string(),
         );
-    }
-
-    pub fn send_worldedit_message(&mut self, message: &str) {
-        self.send_raw_system_message(
-            json!({
-                "text": message,
-                "color": "light_purple"
-            })
-            .to_string(),
-        );
-    }
-
-    pub fn worldedit_set_first_position(&mut self, x: i32, y: u32, z: i32) {
-        self.send_worldedit_message(&format!("First position set to ({}, {}, {})", x, y, z));
-        self.first_position = Some(BlockPos::new(x, y, z));
-    }
-
-    pub fn worldedit_set_second_position(&mut self, x: i32, y: u32, z: i32) {
-        self.send_worldedit_message(&format!("Second position set to ({}, {}, {})", x, y, z));
-        self.second_position = Some(BlockPos::new(x, y, z));
     }
 
     pub fn kick(&mut self, reason: String) {
