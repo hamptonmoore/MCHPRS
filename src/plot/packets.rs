@@ -40,28 +40,8 @@ impl Plot {
     fn handle_packet(&mut self, player: usize, packet: PacketDecoder) -> DecodeResult<bool> {
         match packet.packet_id {
             0x03 => return Ok(self.handle_chat_message(player, S03ChatMessage::decode(packet)?)),
-            0x05 => self.handle_client_settings(player, S05ClientSettings::decode(packet)?),
             0x0B => self.handle_plugin_message(player, S0BPluginMessage::decode(packet)?),
             0x0F => self.players[player].last_keep_alive_received = Instant::now(), // Keep Alive
-            0x11 => self.handle_player_position(player, S11PlayerPosition::decode(packet)?),
-            0x12 => self.handle_player_position_and_rotation(
-                player,
-                S12PlayerPositionAndRotation::decode(packet)?,
-            ),
-            0x13 => self.handle_player_rotation(player, S13PlayerRotation::decode(packet)?),
-            0x14 => self.handle_player_movement(player, S14PlayerMovement::decode(packet)?),
-            0x19 => self.handle_player_abilities(player, S19PlayerAbilities::decode(packet)?),
-            0x1A => self.handle_player_digging(player, S1APlayerDigging::decode(packet)?),
-            0x1B => self.handle_entity_action(player, S1BEntityAction::decode(packet)?),
-            0x23 => self.handle_held_item_change(player, S23HeldItemChange::decode(packet)?),
-            0x26 => self.handle_creative_inventory_action(
-                player,
-                S26CreativeInventoryAction::decode(packet)?,
-            ),
-            0x2A => self.handle_animation(player, S2AAnimation::decode(packet)?),
-            0x2C => {
-                self.handle_player_block_placement(player, S2CPlayerBlockPlacemnt::decode(packet)?)
-            }
             id => {
                 debug!("Unhandled packet: {:02X}", id);
             }
