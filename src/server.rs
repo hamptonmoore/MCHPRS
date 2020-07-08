@@ -131,8 +131,7 @@ impl MinecraftServer {
         info!("Starting server...");
         let start_time = Instant::now();
 
-        // Create world folders if they don't exist yet
-        fs::create_dir_all("./world/players").unwrap();
+
         fs::create_dir_all("./world/plots").unwrap();
 
         plot::database::init();

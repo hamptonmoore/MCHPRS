@@ -101,50 +101,7 @@ impl Player {
     }
 
     pub fn load_player(uuid: u128, username: String, client: NetworkClient) -> Player {
-        if let Ok(data) = fs::read(format!("./world/players/{:032x}", uuid)) {
-            // TODO: Handle format error
-            let player_data: PlayerData = bincode::deserialize(&data).unwrap();
-
-            let mut inventory: Vec<Option<ItemStack>> = vec![];
-            inventory.resize_with(46, || None);
-            for entry in player_data.inventory {
-                let nbt = entry
-                    .nbt
-                    .map(|data| nbt::Blob::from_reader(&mut Cursor::new(data)).unwrap());
-                inventory[entry.slot as usize] = Some(ItemStack {
-                    item_type: Item::from_id(entry.id),
-                    count: entry.count as u8,
-                    damage: entry.damage as u16,
-                    nbt,
-                });
-            }
-            Player {
-                uuid,
-                username,
-                skin_parts: Default::default(),
-                inventory,
-                selected_slot: player_data.selected_item_slot as u32,
-                x: player_data.position[0],
-                y: player_data.position[1],
-                z: player_data.position[2],
-                pitch: player_data.rotation[0],
-                yaw: player_data.rotation[1],
-                last_chunk_x: 0,
-                last_chunk_z: 0,
-                entity_id: client.id,
-                client,
-                flying: player_data.flying,
-                sprinting: false,
-                crouching: false,
-                on_ground: player_data.on_ground,
-                walk_speed: player_data.walk_speed,
-                fly_speed: player_data.fly_speed,
-                last_keep_alive_received: Instant::now(),
-                last_keep_alive_sent: Instant::now(),
-            }
-        } else {
-            Player::create_player(uuid, username, client)
-        }
+        Player::create_player(uuid, username, client)
     }
 
     fn create_player(uuid: u128, username: String, client: NetworkClient) -> Player {
@@ -174,44 +131,6 @@ impl Player {
             last_keep_alive_received: Instant::now(),
             last_keep_alive_sent: Instant::now(),
         }
-    }
-
-    pub fn save(&self) {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(format!("./world/players/{:032x}", self.uuid))
-            .unwrap();
-        let mut inventory: Vec<InventoryEntry> = Vec::new();
-        for (slot, item_option) in self.inventory.iter().enumerate() {
-            if let Some(item) = item_option {
-                let nbt = item.nbt.clone().map(|blob| {
-                    let mut data = Vec::new();
-                    blob.to_writer(&mut data).unwrap();
-                    data
-                });
-                inventory.push(InventoryEntry {
-                    count: item.count as i8,
-                    id: item.item_type.get_id(),
-                    damage: item.damage as i16,
-                    slot: slot as i8,
-                    nbt,
-                })
-            }
-        }
-        let data = bincode::serialize(&PlayerData {
-            fly_speed: self.fly_speed,
-            flying: self.flying,
-            inventory,
-            motion: vec![0f64, 0f64, 0f64],
-            on_ground: self.on_ground,
-            position: vec![self.x, self.y, self.z],
-            rotation: vec![self.pitch, self.yaw],
-            selected_item_slot: self.selected_slot as i32,
-            walk_speed: self.walk_speed,
-        })
-        .unwrap();
-        file.write_all(&data).unwrap();
     }
 
     pub fn update(&mut self) -> bool {

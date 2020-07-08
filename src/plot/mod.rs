@@ -198,7 +198,6 @@ impl Plot {
     }
 
     fn enter_plot(&mut self, mut player: Player) {
-        self.save();
         let spawn_player = C05SpawnPlayer {
             entity_id: player.entity_id as i32,
             uuid: player.uuid,
@@ -436,7 +435,6 @@ impl Plot {
                 BroadcastMessage::Shutdown => {
                     let mut players: Vec<Player> = self.players.drain(..).collect();
                     for player in players.iter_mut() {
-                        player.save();
                         player.kick(
                             json!({
                                 "text": "Server closed"
@@ -514,7 +512,6 @@ impl Plot {
         self.players.retain(|player| {
             let alive = player.client.alive;
             if !alive {
-                player.save();
                 message_sender
                     .send(Message::PlayerLeft(player.uuid))
                     .unwrap();
@@ -644,25 +641,6 @@ impl Plot {
         }
     }
 
-    fn save(&self) {
-        debug!("Saving plot {},{}", self.x, self.z);
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(format!("./world/plots/p{},{}", self.x, self.z))
-            .unwrap();
-        let chunk_data: Vec<ChunkData> = self.chunks.iter().map(|c| c.save()).collect();
-        let encoded: Vec<u8> = bincode::serialize(&PlotData {
-            tps: self.tps,
-            show_redstone: self.show_redstone,
-            chunk_data,
-            pending_ticks: self.to_be_ticked.clone(),
-        })
-        .unwrap();
-        file.write_all(&encoded).unwrap();
-        file.sync_data().unwrap();
-    }
-
     fn run(&mut self, initial_player: Option<Player>) {
         debug!("Running new plot!");
         if let Some(player) = initial_player {
@@ -700,7 +678,6 @@ impl Drop for Plot {
             // TODO: send all players to spawn and send them message along the lines of:
             // "The plot you were previously in has crashed, you have been teleported to the spawn plot."
             for player in &mut self.players {
-                player.save();
                 // Give the player the bad news.
                 player.kick(
                     r#"{ "text": "The plot you were previously in has crashed!", "color": "red" }"#
@@ -708,7 +685,6 @@ impl Drop for Plot {
                 );
             }
         }
-        self.save();
         debug!("Plot {},{} unloaded", self.x, self.z);
         self.message_sender
             .send(Message::PlotUnload(self.x, self.z))
