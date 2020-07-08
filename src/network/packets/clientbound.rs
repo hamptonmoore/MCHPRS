@@ -70,32 +70,6 @@ impl ClientBoundPacket for C03SetCompression {
         PacketEncoder::new(buf, 0x03)
     }
 }
-
-pub struct C05SpawnPlayer {
-    pub entity_id: i32,
-    pub uuid: u128,
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-    pub yaw: f32,
-    pub pitch: f32,
-    pub on_ground: bool,
-}
-
-impl ClientBoundPacket for C05SpawnPlayer {
-    fn encode(self) -> PacketEncoder {
-        let mut buf = Vec::new();
-        buf.write_varint(self.entity_id);
-        buf.write_uuid(self.uuid);
-        buf.write_double(self.x);
-        buf.write_double(self.y);
-        buf.write_double(self.z);
-        buf.write_byte((self.yaw % 360f32 / 360f32 * 256f32) as i8);
-        buf.write_byte((self.pitch % 360f32 / 360f32 * 256f32) as i8);
-        PacketEncoder::new(buf, 0x05)
-    }
-}
-
 // Play Packets
 
 pub struct C06EntityAnimation {

@@ -198,17 +198,6 @@ impl Plot {
     }
 
     fn enter_plot(&mut self, mut player: Player) {
-        let spawn_player = C05SpawnPlayer {
-            entity_id: player.entity_id as i32,
-            uuid: player.uuid,
-            on_ground: player.on_ground,
-            pitch: player.pitch,
-            yaw: player.yaw,
-            x: player.x,
-            y: player.y,
-            z: player.z,
-        }
-        .encode();
         let mut metadata_entries = Vec::new();
         metadata_entries.push(C44EntityMetadataEntry {
             index: 16,
@@ -220,66 +209,7 @@ impl Plot {
             metadata: metadata_entries,
         }
         .encode();
-        for other_player in &mut self.players {
-            other_player.client.send_packet(&spawn_player);
-            other_player.client.send_packet(&metadata);
-
-            let spawn_other_player = C05SpawnPlayer {
-                entity_id: other_player.entity_id as i32,
-                uuid: other_player.uuid,
-                on_ground: other_player.on_ground,
-                pitch: other_player.pitch,
-                yaw: other_player.yaw,
-                x: other_player.x,
-                y: other_player.y,
-                z: other_player.z,
-            }
-            .encode();
-            player.client.send_packet(&spawn_other_player);
-
-            if let Some(item) = &other_player.inventory[other_player.selected_slot as usize + 36] {
-                let other_entity_equipment = C47EntityEquipment {
-                    entity_id: other_player.entity_id as i32,
-                    slot: 0, // Main hand
-                    item: Some(SlotData {
-                        item_count: item.count as i8,
-                        item_id: item.item_type.get_id() as i32,
-                        nbt: item.nbt.clone(),
-                    }),
-                }
-                .encode();
-                player.client.send_packet(&other_entity_equipment);
-            }
-
-            let mut other_metadata_entries = Vec::new();
-            other_metadata_entries.push(C44EntityMetadataEntry {
-                index: 16,
-                metadata_type: 0,
-                value: vec![other_player.skin_parts.bits() as u8],
-            });
-            let other_metadata = C44EntityMetadata {
-                entity_id: other_player.entity_id as i32,
-                metadata: other_metadata_entries,
-            }
-            .encode();
-            player.client.send_packet(&other_metadata);
-        }
-
-        if let Some(item) = &player.inventory[player.selected_slot as usize + 36] {
-            let entity_equipment = C47EntityEquipment {
-                entity_id: player.entity_id as i32,
-                slot: 0, // Main hand
-                item: Some(SlotData {
-                    item_count: item.count as i8,
-                    item_id: item.item_type.get_id() as i32,
-                    nbt: item.nbt.clone(),
-                }),
-            }
-            .encode();
-            for other_player in &mut self.players {
-                other_player.client.send_packet(&entity_equipment);
-            }
-        }
+    
 
         player.send_system_message(&format!("Entering plot ({}, {})", self.x, self.z));
         self.players.push(player);
